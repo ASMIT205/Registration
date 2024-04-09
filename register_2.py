@@ -54,6 +54,98 @@ class Doctor(db.Model):
     name = db.Column(db.String(100), nullable=False)
     patients = db.relationship('UserDetails', secondary='doctor_patient_association', backref=db.backref('doctors', lazy='dynamic'))
 
+class NewTable(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    
+class DoctorDetails(db.Model):
+    id = db.Column(db.Integer, primary_key =True)
+    user_id = db.Column(db.Integer, db.ForeignKey('doctor.id'), nullable=False)
+    phone_number = db.Column(db.Integer, unique=True, nullable=False)
+    first_name = db.Column(db.String(100), nullable=False)
+    last_name = db.Column(db.String(100), nullable=False) 
+    date_of_birth = db.Column(db.Date,nullable=False)  
+    #personal _qualification
+    First_qualification = db.Column(db.String(10),nullable=False)
+    year_of_passing = db.Column(db.Integer, nullable=False)
+
+    gender = db.Column(db.String(10),nullable=False)
+    Designation = db.Column(db.String(10),nullable=False)
+    medical_council_member = db.Column(db.Integer,nullable=False)
+    certificate = db.Column(db.String(255),nullable=False)
+    speciality = db.Column(db.String(10),nullable=False)
+    About_the_doctor = db.Column(db.String(255))
+
+    # Define a relationship to the Doctor Table
+    doctor = db.relationship('Doctor',backref= db.backref('doctor_details',lazy=True))
+    
+
+@app.route('/create_doctor_details', methods = ['POST'])
+def create_doctor_details():
+    data = request.json
+
+    first_name = data['first_name']
+    last_name = data['last_name']
+    phone_number = str(data['phone_number'])[-5:]  # Extract last 3 digits of phone number
+    user_id = f"{first_name[:2]}{last_name[:2]}{phone_number}"
+    #Convert date_of_birth string to Python date
+    # date_of_birth = datetime.datetime.strptime(data.get('date_of_birth', ''), '%Y-%m-%d').date() if 'date_of_birth' in data else None
+    date_of_birth = datetime.datetime.strptime(data['date_of_birth'], '%Y-%m-%d').date()
+
+    new_doctor_details = DoctorDetails(
+        user_id=user_id,
+        phone_number=data['phone_number'],
+        first_name=data['first_name'],
+        last_name=data['last_name'],
+        date_of_birth=date_of_birth,
+        First_qualification = data['First_qualification'],
+        year_of_passing = data['year_of_passing'],
+        gender=data['gender'],
+        Designation = data['Designation'],
+        medical_council_member = data['medical_council_member'],
+        certificate = data['certificate'],
+        speciality = data['speciality'],
+        About_the_doctor = data.get('About_the_doctor')
+
+     )
+    db.session.add(new_doctor_details)
+    db.session.commit()
+    return jsonify({'message':'User detail created successfully', 'userName':user_id}), 201
+
+@app.route('/doctor_details',methods=['GET'])
+def get_all_doctor_details():
+    doctor_details = DoctorDetails.query.all()
+    result = [{'id': detail.id, 'doctor_id': detail.user_id, 'phone_number': detail.phone_number, 'first_name': detail.first_name, 'last_name': detail.last_name} for detail in doctor_details]
+    return jsonify(result), 200
+@app.route('/doctor_details/<int:doctor_detail_id>',methods=['GET'])
+def get_doctor_detail(doctor_detail_id):
+    doctor_detail = DoctorDetails.query.get_or_404(doctor_detail_id)
+    return jsonify({'id': doctor_detail.id, 'user_id': doctor_detail.user_id, 'phone_number': doctor_detail.phone_number, 'first_name': doctor_detail.first_name, 'last_name': doctor_detail.last_name}), 200
+@app.route('/update_doctor_details/<int:doctor_detail_id>',methods=['PUT'])
+def update_doctor_detail(doctor_detail_id):
+     doctor_detail = DoctorDetails.query.get_or_404(doctor_detail_id)
+     data = request.json
+     doctor_detail.phone_number=data.get('phone_number', doctor_detail.phone_number)
+     doctor_detail.first_name=data.get('first_name', doctor_detail.first_name)
+     doctor_detail.last_name=data.get('last_name', doctor_detail.last_name)
+     doctor_detail.date_of_birth=data.get('date_of_birth', doctor_detail.date_of_birth)
+     doctor_detail.First_qualification = data.get('First_qualification',doctor_detail.First_qualification)
+     doctor_detail.year_of_passing = data.get('year_of_passing',doctor_detail.year_of_passing)
+     doctor_detail.gender=data.get('gender', doctor_detail.gender)
+     doctor_detail.Designation = data.get('Designation',doctor_detail.Designation)
+     doctor_detail.medical_council_member = data.get('medical_council_member',doctor_detail.medical_council_member)
+     doctor_detail.certificate = data.get('certificate',doctor_detail.certificate)
+     doctor_detail.speciality = data.get('speciality',doctor_detail.speciality)
+     doctor_detail.About_the_doctor = data.get('About_the_doctor',doctor_detail.About_the_doctor)
+     db.session.commit()
+     return jsonify({'message': 'Doctor detail updated successfully'}), 200
+@app.route('/delete_details/<int:doctor_detail_id>',methods =['DELETE'])
+def delete_user_details(doctor_detail_id):
+    doctor_detail = DoctorDetails.query.get_or_404(doctor_detail_id)
+    db.session.delete(doctor_detail)
+    db.session.commit()
+    return jsonify({'message': 'Doctor detail deleted successfully'}), 200
+
+    
 # Define association table for Doctor-Patient relationship
 doctor_patient_association = db.Table('doctor_patient_association',
     db.Column('doctor_id', db.Integer, db.ForeignKey('doctor.id')),
