@@ -290,4 +290,4 @@ def get_doctor_patients(doctor_id):
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
-    app.run(port='8081', debug=True)
+    app.run(host='0.0.0.0',port='8081', debug=True)
