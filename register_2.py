@@ -79,7 +79,7 @@ class DoctorDetails(db.Model):
     doctor = db.relationship('Doctor',backref= db.backref('doctor_details',lazy=True))
     
 
-@app.route('/create_doctor_details', methods = ['POST'])
+@app.route('/doctor', methods = ['POST'])
 def create_doctor_details():
     data = request.json
 
@@ -111,16 +111,16 @@ def create_doctor_details():
     db.session.commit()
     return jsonify({'message':'User detail created successfully', 'userName':user_id}), 201
 
-@app.route('/doctor_details',methods=['GET'])
+@app.route('/doctor',methods=['GET'])
 def get_all_doctor_details():
     doctor_details = DoctorDetails.query.all()
     result = [{'id': detail.id, 'doctor_id': detail.user_id, 'phone_number': detail.phone_number, 'first_name': detail.first_name, 'last_name': detail.last_name} for detail in doctor_details]
     return jsonify(result), 200
-@app.route('/doctor_details/<int:doctor_detail_id>',methods=['GET'])
+@app.route('/doctor/<int:doctor_detail_id>',methods=['GET'])
 def get_doctor_detail(doctor_detail_id):
     doctor_detail = DoctorDetails.query.get_or_404(doctor_detail_id)
     return jsonify({'id': doctor_detail.id, 'user_id': doctor_detail.user_id, 'phone_number': doctor_detail.phone_number, 'first_name': doctor_detail.first_name, 'last_name': doctor_detail.last_name}), 200
-@app.route('/update_doctor_details/<int:doctor_detail_id>',methods=['PUT'])
+@app.route('/doctor/<int:doctor_detail_id>',methods=['PUT'])
 def update_doctor_detail(doctor_detail_id):
      doctor_detail = DoctorDetails.query.get_or_404(doctor_detail_id)
      data = request.json
@@ -138,7 +138,7 @@ def update_doctor_detail(doctor_detail_id):
      doctor_detail.About_the_doctor = data.get('About_the_doctor',doctor_detail.About_the_doctor)
      db.session.commit()
      return jsonify({'message': 'Doctor detail updated successfully'}), 200
-@app.route('/delete_details/<int:doctor_detail_id>',methods =['DELETE'])
+@app.route('/doctor/<int:doctor_detail_id>',methods =['DELETE'])
 def delete_user_details(doctor_detail_id):
     doctor_detail = DoctorDetails.query.get_or_404(doctor_detail_id)
     db.session.delete(doctor_detail)
@@ -152,7 +152,7 @@ doctor_patient_association = db.Table('doctor_patient_association',
     db.Column('user_details_id', db.Integer, db.ForeignKey('user_details.user_id'))
 )
 
-@app.route('/create_user_details', methods=['POST'])
+@app.route('/patient', methods=['POST'])
 def create_user_detail():
     data = request.json
     
@@ -197,18 +197,18 @@ def create_user_detail():
     db.session.commit()
     return jsonify({'message': 'User detail created successfully', 'userName': user_id}), 201
 
-@app.route('/user_details', methods=['GET'])
+@app.route('/patient', methods=['GET'])
 def get_all_user_details():
     user_details = UserDetails.query.all()
     result = [{'id': detail.id, 'user_id': detail.user_id, 'phone_number': detail.phone_number, 'first_name': detail.first_name, 'last_name': detail.last_name} for detail in user_details]
     return jsonify(result), 200
 
-@app.route('/user_details/<int:user_detail_id>', methods=['GET'])
+@app.route('/patient/<int:user_detail_id>', methods=['GET'])
 def get_user_detail(user_detail_id):
     user_detail = UserDetails.query.get_or_404(user_detail_id)
     return jsonify({'id': user_detail.id, 'user_id': user_detail.user_id, 'phone_number': user_detail.phone_number, 'first_name': user_detail.first_name, 'last_name': user_detail.last_name}), 200
 
-@app.route('/user_details/<int:user_detail_id>', methods=['PUT'])
+@app.route('/patient/<int:user_detail_id>', methods=['PUT'])
 def update_user_detail(user_detail_id):
     user_detail = UserDetails.query.get_or_404(user_detail_id)
     data = request.json
@@ -240,7 +240,7 @@ def update_user_detail(user_detail_id):
     db.session.commit()
     return jsonify({'message': 'User detail updated successfully'}), 200
 
-@app.route('/user_details/<int:user_detail_id>', methods=['DELETE'])
+@app.route('/patient/<int:user_detail_id>', methods=['DELETE'])
 def delete_user_detail(user_detail_id):
     user_detail = UserDetails.query.get_or_404(user_detail_id)
     db.session.delete(user_detail)
@@ -248,18 +248,18 @@ def delete_user_detail(user_detail_id):
     return jsonify({'message': 'User detail deleted successfully'}), 200
 
 # New routes for assigning patients to doctors and for doctors to view their assigned patients
-@app.route('/create_doctor', methods=['POST'])
-def create_doctor():
-    data = request.json
-    name = data.get('name')
+# @app.route('/create_doctor', methods=['POST'])
+# def create_doctor():
+#     data = request.json
+#     name = data.get('name')
 
-    new_doctor = Doctor(name=name)
-    db.session.add(new_doctor)
-    db.session.commit()
+#     new_doctor = Doctor(name=name)
+#     db.session.add(new_doctor)
+#     db.session.commit()
 
-    return jsonify({'message': 'Doctor created successfully', 'doctor_id': new_doctor.id}), 201
+#     return jsonify({'message': 'Doctor created successfully', 'doctor_id': new_doctor.id}), 201
 
-@app.route('/assign_patient_to_doctor', methods=['POST'])
+@app.route('/doctor/patient', methods=['POST'])
 def assign_patient_to_doctor():
     data = request.json
     doctor_id = data.get('doctor_id')
