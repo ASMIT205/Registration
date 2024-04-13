@@ -1,8 +1,10 @@
 from flask import Flask, request, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
-import datetime
+from datetime import datetime
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy import UniqueConstraint
+import re 
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
@@ -11,44 +13,17 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 
 # Define the User model
-class User(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    # Add other columns as needed
-
-# Define the UserDetails model
-class UserDetails(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    phone_number = db.Column(db.Integer, unique=True, nullable=False)  # Unique and compulsory field
-    first_name = db.Column(db.String(100), nullable=False)  # Compulsory field
-    last_name = db.Column(db.String(100), nullable=False)  # Compulsory field
-    date_of_birth = db.Column(db.Date)  # Optional field
-    age = db.Column(db.String(3))  # Optional field
-    gender = db.Column(db.String(10))   # Optional field
-    marital_status = db.Column(db.String(20))  # Optional field
-    alternate_mobile_number = db.Column(db.Integer)  # Optional field
-    p_house_no = db.Column(db.String(50))  # Optional field
-    p_locality = db.Column(db.String(100))  # Optional field
-    p_pin_code = db.Column(db.String(10))  # Optional field
-    p_state = db.Column(db.String(50))  # Optional field
-    p_city = db.Column(db.String(50))  # Optional field
-    p_district = db.Column(db.String(50))  # Optional field
-    address = db.Column(db.String(255))  # Optional field
-    care_giver_first_name = db.Column(db.String(100))  # Optional field
-    care_giver_last_name = db.Column(db.String(100))  # Optional field
-    care_giver_mobile_number = db.Column(db.Integer)  # Optional field
-    care_giver_relation = db.Column(db.String(50))  # Optional field
-    c_house_no = db.Column(db.String(50))  # Optional field
-    c_locality = db.Column(db.String(100))  # Optional field
-    c_pin_code = db.Column(db.String(10))  # Optional field
-    c_state = db.Column(db.String(50))  # Optional field
-    c_city = db.Column(db.String(50))  # Optional field
-    c_district = db.Column(db.String(50))  # Optional field
-
-    # Define a relationship to the User table
-    user = db.relationship('User', backref=db.backref('user_details', lazy=True))
 
 # Define the Doctor model
+def calculate_age(birth_date):
+    # Get the current date
+    current_date = datetime.now()
+    
+    # Calculate the difference between current date and birth date
+    age = current_date.year - birth_date.year - ((current_date.month, current_date.day) < (birth_date.month, birth_date.day))
+    
+    return age   
+
 class Doctor(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100), nullable=False)
@@ -63,7 +38,8 @@ class DoctorDetails(db.Model):
     phone_number = db.Column(db.Integer, unique=True, nullable=False)
     first_name = db.Column(db.String(100), nullable=False)
     last_name = db.Column(db.String(100), nullable=False) 
-    date_of_birth = db.Column(db.Date,nullable=False)  
+    date_of_birth = db.Column(db.Date,nullable=False) 
+    age = db.Column(db.Integer, nullable=False) 
     #personal _qualification
     First_qualification = db.Column(db.String(10),nullable=False)
     year_of_passing = db.Column(db.Integer, nullable=False)
@@ -77,19 +53,52 @@ class DoctorDetails(db.Model):
 
     # Define a relationship to the Doctor Table
     doctor = db.relationship('Doctor',backref= db.backref('doctor_details',lazy=True))
-    
+
 
 @app.route('/doctor', methods = ['POST'])
 def create_doctor_details():
     data = request.json
 
+    if 'first_name' not in data:
+        return jsonify({'error': 'First name is required'}), 400
+    elif 'phone_number' not in data:
+        return jsonify({'error': 'Phone number is required'}), 400
+    elif 'last_name' not in data:
+        return jsonify({'error': 'Last name is required'}), 400
+    elif 'date_of_birth' not in data:
+        return jsonify({'error': 'Date of birth is required'}), 400
+    elif 'First_qualification' not in data:
+        return jsonify({'error': 'First qualification  is required'}), 400
+    elif 'year_of_passing' not in data:
+        return jsonify({'error': 'Year_of_passing is required'}), 400
+    elif 'gender' not in data:
+        return jsonify({'error': 'Gender is required'}), 400
+    elif 'Designation' not in data:
+        return jsonify({'error': 'Designation  is required'}), 400
+    elif 'medical_council_member' not in data:
+        return jsonify({'error': 'Medical_council_member is required'}), 400
+    elif 'certificate' not in data:
+        return jsonify({'error': 'Certificate is required'}), 400
+    elif 'speciality' not in data:
+        return jsonify({'error': 'Speciality  is required'}), 400
+    
+
     first_name = data['first_name']
     last_name = data['last_name']
     phone_number = str(data['phone_number'])[-5:]  # Extract last 3 digits of phone number
+    if not re.match(r'^\d+$', str(data['phone_number'])):
+         return jsonify({'error': 'Invalid phone number format. Must contain 10 numeric digits.'}), 400
+    elif len(str(data['phone_number'])) > 10:
+         return jsonify({'error': 'Invalid phone number length. Entered number is greater than 10 digits.'}), 400
+    elif len(str(data['phone_number'])) < 10:
+         return jsonify({'error': 'Invalid phone number length. Entered number is less than 10 digits.'}), 400
+   
     user_id = f"{first_name[:2]}{last_name[:2]}{phone_number}"
+
     #Convert date_of_birth string to Python date
     # date_of_birth = datetime.datetime.strptime(data.get('date_of_birth', ''), '%Y-%m-%d').date() if 'date_of_birth' in data else None
-    date_of_birth = datetime.datetime.strptime(data['date_of_birth'], '%Y-%m-%d').date()
+    date_of_birth = datetime.strptime(data['date_of_birth'], '%Y-%m-%d').date()
+    age= calculate_age(date_of_birth)
 
     new_doctor_details = DoctorDetails(
         user_id=user_id,
@@ -97,6 +106,7 @@ def create_doctor_details():
         first_name=data['first_name'],
         last_name=data['last_name'],
         date_of_birth=date_of_birth,
+        age = age,
         First_qualification = data['First_qualification'],
         year_of_passing = data['year_of_passing'],
         gender=data['gender'],
@@ -107,19 +117,24 @@ def create_doctor_details():
         About_the_doctor = data.get('About_the_doctor')
 
      )
-    db.session.add(new_doctor_details)
-    db.session.commit()
-    return jsonify({'message':'User detail created successfully', 'userName':user_id}), 201
+    try:
+       db.session.add(new_doctor_details)
+       db.session.commit()
+       return jsonify({'message':'User detail created successfully', 'userName':user_id}), 201
+    except IntegrityError:
+        db.session.rollback()
+        return jsonify({'error': 'Phone number already exists'}), 400
+
 
 @app.route('/doctor',methods=['GET'])
 def get_all_doctor_details():
     doctor_details = DoctorDetails.query.all()
-    result = [{'id': detail.id, 'doctor_id': detail.user_id, 'phone_number': detail.phone_number, 'first_name': detail.first_name, 'last_name': detail.last_name} for detail in doctor_details]
+    result = [{'id': detail.id, 'doctor_id': detail.user_id, 'phone_number': detail.phone_number, 'first_name': detail.first_name, 'last_name': detail.last_name,'age':detail.age,'gender':detail.gender,'speciality':detail.speciality} for detail in doctor_details]
     return jsonify(result), 200
 @app.route('/doctor/<int:doctor_detail_id>',methods=['GET'])
 def get_doctor_detail(doctor_detail_id):
     doctor_detail = DoctorDetails.query.get_or_404(doctor_detail_id)
-    return jsonify({'id': doctor_detail.id, 'user_id': doctor_detail.user_id, 'phone_number': doctor_detail.phone_number, 'first_name': doctor_detail.first_name, 'last_name': doctor_detail.last_name}), 200
+    return jsonify({'id': doctor_detail.id, 'user_id': doctor_detail.user_id, 'phone_number': doctor_detail.phone_number, 'first_name': doctor_detail.first_name, 'last_name': doctor_detail.last_name,'age':doctor_detail.age,'gender':doctor_detail.gender,'speciality':doctor_detail.speciality}), 200
 @app.route('/doctor/<int:doctor_detail_id>',methods=['PUT'])
 def update_doctor_detail(doctor_detail_id):
      doctor_detail = DoctorDetails.query.get_or_404(doctor_detail_id)
@@ -152,18 +167,73 @@ doctor_patient_association = db.Table('doctor_patient_association',
     db.Column('user_details_id', db.Integer, db.ForeignKey('user_details.user_id'))
 )
 
+
+class User(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    # Add other columns as needed
+
+# Define the UserDetails model
+class UserDetails(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    phone_number = db.Column(db.Integer, unique=True, nullable=False)  # Unique and compulsory field
+    first_name = db.Column(db.String(100), nullable=False)  # Compulsory field
+    last_name = db.Column(db.String(100), nullable=False)  # Compulsory field
+    date_of_birth = db.Column(db.Date)  # Optional field
+    age = db.Column(db.Integer,nullable=False)
+    gender = db.Column(db.String(10))   # Optional field
+    marital_status = db.Column(db.String(20))  # Optional field
+    alternate_mobile_number = db.Column(db.Integer)  # Optional field
+    p_house_no = db.Column(db.String(50))  # Optional field
+    p_locality = db.Column(db.String(100))  # Optional field
+    p_pin_code = db.Column(db.String(10))  # Optional field
+    p_state = db.Column(db.String(50))  # Optional field
+    p_city = db.Column(db.String(50))  # Optional field
+    p_district = db.Column(db.String(50))  # Optional field
+    address = db.Column(db.String(255))  # Optional field
+    care_giver_first_name = db.Column(db.String(100))  # Optional field
+    care_giver_last_name = db.Column(db.String(100))  # Optional field
+    care_giver_mobile_number = db.Column(db.Integer)  # Optional field
+    care_giver_relation = db.Column(db.String(50))  # Optional field
+    c_house_no = db.Column(db.String(50))  # Optional field
+    c_locality = db.Column(db.String(100))  # Optional field
+    c_pin_code = db.Column(db.String(10))  # Optional field
+    c_state = db.Column(db.String(50))  # Optional field
+    c_city = db.Column(db.String(50))  # Optional field
+    c_district = db.Column(db.String(50))  # Optional field
+
+    # Define a relationship to the User table
+    user = db.relationship('User', backref=db.backref('user_details', lazy=True))
+
+
+
+
 @app.route('/patient', methods=['POST'])
 def create_user_detail():
     data = request.json
     
     # Generate user_id
+    if 'first_name' not in data:
+        return jsonify({'error': 'First name is required'}), 400
+    elif 'phone_number' not in data:
+        return jsonify({'error': 'Phone number is required'}), 400
+    elif 'last_name' not in data:
+        return jsonify({'error': 'Last name is required'}), 400
     first_name = data['first_name']
     last_name = data['last_name']
     phone_number = str(data['phone_number'])[-5:]  # Extract last 3 digits of phone number
+    if not re.match(r'^\d+$', str(data['phone_number'])):
+         return jsonify({'error': 'Invalid phone number format. Must contain 10 numeric digits.'}), 400
+    elif len(str(data['phone_number'])) > 10:
+         return jsonify({'error': 'Invalid phone number length. Entered number is greater than 10 digits.'}), 400
+    elif len(str(data['phone_number'])) < 10:
+         return jsonify({'error': 'Invalid phone number length. Entered number is less than 10 digits.'}), 400
     user_id = f"{first_name[:2]}{last_name[:2]}{phone_number}"
     
     # Convert date_of_birth string to Python date object
-    date_of_birth = datetime.datetime.strptime(data.get('date_of_birth', ''), '%Y-%m-%d').date() if 'date_of_birth' in data else None
+    date_of_birth = datetime.strptime(data.get('date_of_birth', ''), '%Y-%m-%d').date() if 'date_of_birth' in data else None
+    age=calculate_age(date_of_birth)
+    
     
     new_user_detail = UserDetails(
         user_id=user_id,
@@ -171,7 +241,7 @@ def create_user_detail():
         first_name=data['first_name'],
         last_name=data['last_name'],
         date_of_birth=date_of_birth,
-        age=data.get('age'),
+        age=age,
         gender=data.get('gender'),
         marital_status=data.get('marital_status'),
         alternate_mobile_number=data.get('alternate_mobile_number'),
@@ -193,20 +263,25 @@ def create_user_detail():
         c_city=data.get('c_city'),
         c_district=data.get('c_district')
     )
-    db.session.add(new_user_detail)
-    db.session.commit()
-    return jsonify({'message': 'User detail created successfully', 'userName': user_id}), 201
+    try:
+       db.session.add(new_user_detail)
+       db.session.commit()
+       return jsonify({'message': 'User detail created successfully', 'userName': user_id}), 201
+    except IntegrityError:
+        db.session.rollback()
+        return jsonify({'error': 'Phone number already exists'}), 400
+
 
 @app.route('/patient', methods=['GET'])
 def get_all_user_details():
     user_details = UserDetails.query.all()
-    result = [{'id': detail.id, 'user_id': detail.user_id, 'phone_number': detail.phone_number, 'first_name': detail.first_name, 'last_name': detail.last_name} for detail in user_details]
+    result = [{'id': detail.id, 'user_id': detail.user_id, 'phone_number': detail.phone_number, 'first_name': detail.first_name, 'last_name': detail.last_name,'age':detail.age,'gender':detail.gender} for detail in user_details]
     return jsonify(result), 200
 
 @app.route('/patient/<int:user_detail_id>', methods=['GET'])
 def get_user_detail(user_detail_id):
     user_detail = UserDetails.query.get_or_404(user_detail_id)
-    return jsonify({'id': user_detail.id, 'user_id': user_detail.user_id, 'phone_number': user_detail.phone_number, 'first_name': user_detail.first_name, 'last_name': user_detail.last_name}), 200
+    return jsonify({'id': user_detail.id, 'user_id': user_detail.user_id, 'phone_number': user_detail.phone_number, 'first_name': user_detail.first_name, 'last_name': user_detail.last_name,'age':user_detail.age,'gender':user_detail.gender,'speciality':user_detail.speciality}), 200
 
 @app.route('/patient/<int:user_detail_id>', methods=['PUT'])
 def update_user_detail(user_detail_id):
