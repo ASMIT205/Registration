@@ -139,10 +139,25 @@ def get_doctor_detail(doctor_detail_id):
 def update_doctor_detail(doctor_detail_id):
      doctor_detail = DoctorDetails.query.get_or_404(doctor_detail_id)
      data = request.json
+     if not re.match(r'^\d+$', str(data['phone_number'])):
+         return jsonify({'error': 'Invalid phone number format. Must contain 10 numeric digits.'}), 400
+     elif len(str(data['phone_number'])) > 10:
+         return jsonify({'error': 'Invalid phone number length. Entered number is greater than 10 digits.'}), 400
+     elif len(str(data['phone_number'])) < 10:
+         return jsonify({'error': 'Invalid phone number length. Entered number is less than 10 digits.'}), 400
      doctor_detail.phone_number=data.get('phone_number', doctor_detail.phone_number)
      doctor_detail.first_name=data.get('first_name', doctor_detail.first_name)
      doctor_detail.last_name=data.get('last_name', doctor_detail.last_name)
-     doctor_detail.date_of_birth=data.get('date_of_birth', doctor_detail.date_of_birth)
+
+     date_of_birth_str = data.get('date_of_birth')  # Assuming 'date_of_birth' is in "YYYY-MM-DD" format
+     if date_of_birth_str:
+    # Convert date string to Python date object
+        date_of_birth_obj = datetime.strptime(date_of_birth_str, "%Y-%m-%d").date()
+     else:
+       date_of_birth_obj = doctor_detail.date_of_birth  # Keep the existing date if not provided in the data
+
+     doctor_detail.date_of_birth = date_of_birth_obj
+     #doctor_detail.date_of_birth=data.get('date_of_birth', doctor_detail.date_of_birth)
      doctor_detail.First_qualification = data.get('First_qualification',doctor_detail.First_qualification)
      doctor_detail.year_of_passing = data.get('year_of_passing',doctor_detail.year_of_passing)
      doctor_detail.gender=data.get('gender', doctor_detail.gender)
@@ -151,8 +166,14 @@ def update_doctor_detail(doctor_detail_id):
      doctor_detail.certificate = data.get('certificate',doctor_detail.certificate)
      doctor_detail.speciality = data.get('speciality',doctor_detail.speciality)
      doctor_detail.About_the_doctor = data.get('About_the_doctor',doctor_detail.About_the_doctor)
-     db.session.commit()
-     return jsonify({'message': 'Doctor detail updated successfully'}), 200
+     try:
+         db.session.commit()
+         return jsonify({'message': 'Doctor detail updated successfully'}), 200
+     except IntegrityError:
+         db.session.rollback()
+         return jsonify({'error': 'Phone number already exists'}), 400
+
+
 @app.route('/doctor/<int:doctor_detail_id>',methods =['DELETE'])
 def delete_user_details(doctor_detail_id):
     doctor_detail = DoctorDetails.query.get_or_404(doctor_detail_id)
@@ -287,10 +308,26 @@ def get_user_detail(user_detail_id):
 def update_user_detail(user_detail_id):
     user_detail = UserDetails.query.get_or_404(user_detail_id)
     data = request.json
+    if not re.match(r'^\d+$', str(data['phone_number'])):
+         return jsonify({'error': 'Invalid phone number format. Must contain 10 numeric digits.'}), 400
+    elif len(str(data['phone_number'])) > 10:
+         return jsonify({'error': 'Invalid phone number length. Entered number is greater than 10 digits.'}), 400
+    elif len(str(data['phone_number'])) < 10:
+         return jsonify({'error': 'Invalid phone number length. Entered number is less than 10 digits.'}), 400
     user_detail.phone_number = data.get('phone_number', user_detail.phone_number)
     user_detail.first_name = data.get('first_name', user_detail.first_name)
     user_detail.last_name = data.get('last_name', user_detail.last_name)
-    user_detail.date_of_birth = data.get('date_of_birth', user_detail.date_of_birth)
+    #date_obj = datetime.strptime(date_str, "%Y-%m-%d").date()
+    date_of_birth_str = data.get('date_of_birth')  # Assuming 'date_of_birth' is in "YYYY-MM-DD" format
+
+    if date_of_birth_str:
+    # Convert date string to Python date object
+        date_of_birth_obj = datetime.strptime(date_of_birth_str, "%Y-%m-%d").date()
+    else:
+       date_of_birth_obj = user_detail.date_of_birth  # Keep the existing date if not provided in the data
+
+    user_detail.date_of_birth = date_of_birth_obj
+    #user_detail.date_of_birth = data.get('date_of_birth', user_detail.date_of_birth)
     user_detail.age = data.get('age', user_detail.age)
     user_detail.gender = data.get('gender', user_detail.gender)
     user_detail.marital_status = data.get('marital_status', user_detail.marital_status)
@@ -312,8 +349,12 @@ def update_user_detail(user_detail_id):
     user_detail.c_state = data.get('c_state', user_detail.c_state)
     user_detail.c_city = data.get('c_city', user_detail.c_city)
     user_detail.c_district = data.get('c_district', user_detail.c_district)
-    db.session.commit()
-    return jsonify({'message': 'User detail updated successfully'}), 200
+    try:
+     db.session.commit()
+     return jsonify({'message': 'User detail updated successfully'}), 200
+    except IntegrityError:
+        db.session.rollback()
+        return jsonify({'error': 'Phone number already exists'}), 400
 
 @app.route('/patient/<int:user_detail_id>', methods=['DELETE'])
 def delete_user_detail(user_detail_id):
@@ -365,4 +406,4 @@ def get_doctor_patients(doctor_id):
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
-    app.run(host='0.0.0.0',port='8081', debug=True)
+    app.run(host='0.0.0.0'.port='8081', debug=True)
